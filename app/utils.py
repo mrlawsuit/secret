@@ -37,4 +37,3 @@ def decrypt_seceret(encrypted_secret: str, passphrase: str) -> str:
     key = get_key(passphrase)
     f = Fernet(key)
     return f.decrypt(encrypted_secret.encode()).decode()
-
