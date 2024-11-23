@@ -27,7 +27,7 @@ class Secret(Base):
     passphrase_hash: Mapped[str] = mapped_column(String, nullable=False)
     consumed: Mapped[bool] = mapped_column(Boolean, default=False)
     expires_at: Mapped[datetime] = mapped_column(DateTime, nullable=True)
-    created_att: Mapped[datetime] = mapped_column(
+    created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         server_default=func.now()
     )

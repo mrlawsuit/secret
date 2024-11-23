@@ -5,3 +5,5 @@ asyncpg
 alembic
 cryptography
 python-dotenv
+httpx
+passlib
