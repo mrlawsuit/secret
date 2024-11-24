@@ -1,6 +1,4 @@
-from typing import AsyncGenerator
-
-from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
+from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 
 from config import DB_URL
 from models import Base
@@ -8,6 +6,7 @@ from models import Base
 engine = create_async_engine(DB_URL)
 
 async_session = async_sessionmaker(engine)
+
 
 def create_tables(sync_engine):
     Base.metadata.create_all(bind=sync_engine)
