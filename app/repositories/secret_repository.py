@@ -1,6 +1,8 @@
 from datetime import datetime, timedelta, UTC
 import uuid
 
+from sqlalchemy import select
+
 from app import database as db
 import app.schemas as shm
 import app.utils as utils
@@ -8,7 +10,7 @@ from app import models
 
 
 async def create_secret(secret: shm.SecretCreate) -> str:
-    '''create record in db with new secret'''
+    '''Create record in db with new secret'''
     secret_key = str(uuid.uuid4())
     passphrase_hash = utils.get_password_hash(secret.passphrase)
     encrypted_secret = utils.encrypt_secret(secret.secret, secret.passphrase)
@@ -26,3 +28,15 @@ async def create_secret(secret: shm.SecretCreate) -> str:
         session.add(db_secret)
         await session.commit()
     return secret_key
+
+
+async def get_secret(secret_key: str):
+    '''Get a secret by its secret key'''
+    async with db.async_session() as session:
+        result = await session.execute(
+            select(models.Secret).
+            where(models.Secret.secret_key == secret_key)
+        )
+    return result.scalars().first()
+
+
