@@ -40,3 +40,8 @@ async def get_secret(secret_key: str):
     return result.scalars().first()
 
 
+async def make_comsume_mark(secret: models.Secret):
+    '''Marking secret as consumed'''
+    async with db.async_session() as session:
+        secret.consumed = True
+        await session.commit()
