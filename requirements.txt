@@ -1,9 +1,8 @@
 fastapi
-uvicorn
-sqlalchemy
+uvicorn[standard]
 asyncpg
-alembic
+SQLAlchemy[asyncio]
 cryptography
-python-dotenv
+passlib[bcrypt]
+pytest
 httpx
-passlib
