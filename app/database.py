@@ -1,7 +1,8 @@
 from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 
-from config import DB_URL
-from models import Base
+# from config import DB_URL
+from .config import DB_URL
+from .models import Base
 
 engine = create_async_engine(DB_URL)
 
@@ -19,3 +20,6 @@ async def init_db():
 
 async def dispose_engine():
     await engine.dispose()
+
+if __name__ == '__main__':
+    print('done')
