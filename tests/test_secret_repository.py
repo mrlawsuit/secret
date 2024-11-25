@@ -12,7 +12,8 @@ from app.schemas import SecretCreate
 from app.repositories.secret_repository import (
     SecretFactory,
     create_secret,
-    get_secret
+    get_secret,
+    make_consume_mark
 )
 
 
@@ -248,3 +249,28 @@ async def test_get_secret_not_found():
         )  # Проверяем, что запрос выполнен с правильными параметрами
         # Проверяем, что результат — None
         assert result is None
+
+
+@asynccontextmanager
+@pytest.mark.asyncio
+async def test_make_consume_mark_success():
+    mock_secret = models.Secret(
+        id="mock_id",
+        secret_key="mock_secret_key",
+        secret_data="mock_secret_data",
+        passphrase_hash="mock_passphrase_hash",
+        expires_at=None
+    )
+    async with patch(
+        'app.repositories.secret_repository.db.async_session',
+        new_callable=AsyncMock
+    ) as mock_session:
+        # Мокирование сессии
+        mock_session_instance = mock_session.return_value.__aenter__.return_value
+
+        # Вызов кода
+        await make_consume_mark(mock_secret)
+        
+        # Проверка
+        assert mock_secret.consumed is True
+        mock_session_instance.commit.assert_called_once()
