@@ -51,7 +51,7 @@ Secrets maker API это HTTP cервис для одноразовых секр
 Для тестирования используйте `pytest`. Запуск тестов:
 
 bash
-pytest test.py
+pytest needed_test.py
 
 
 
