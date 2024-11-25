@@ -4,11 +4,16 @@ from contextlib import asynccontextmanager
 
 import pytest
 import unittest
-from unittest.mock import patch, AsyncMock
+from unittest.mock import patch, AsyncMock, MagicMock
+from sqlalchemy import select
 
 from app import models
 from app.schemas import SecretCreate
-from app.repositories.secret_repository import SecretFactory, create_secret
+from app.repositories.secret_repository import (
+    SecretFactory,
+    create_secret,
+    get_secret
+)
 
 
 class TestSecretFactory(unittest.TestCase):
@@ -186,3 +191,60 @@ async def test_cretate_secret_without_ttl():
         # Проверка возвращённого значения
         assert secret_key == 'mock_key'
 
+
+@asynccontextmanager
+@pytest.mark.asyncio
+async def test_get_secret_success():
+    mock_secret = models.Secret(
+        id="mock_id",
+        secret_key="mock_secret_key",
+        secret_data="mock_secret_data",
+        passphrase_hash="mock_passphrase_hash",
+        expires_at=None
+    )
+    async with patch(
+        'app.repositories.secret_repository.db.async_session',
+        new_callable=AsyncMock
+    ) as mock_session:
+        # Мокирование переменных и внешних вызовов
+        mock_session_instance = (
+            mock_session.return_value.__aenter__.return_value
+        )
+        mock_execute_result = MagicMock()
+        mock_execute_result.scalars.return_value.first.return_value = mock_secret
+        mock_session_instance.execute.return_value = mock_execute_result
+        
+        # Вызов тестируемого кода
+        secret_key = "mock_secret_key"
+        result = await get_secret(secret_key)
+
+        # Проверка
+        mock_session_instance.execute.assert_await_called_once_with(
+            select(models.Secret).where(models.Secret.secret_key == secret_key)
+        )  # Проверяем, что запрос выполнен с правильными параметрами
+        # Проверяем, что результат соответствует ожидаемому
+        assert result == mock_secret
+
+
+@asynccontextmanager
+@pytest.mark.asyncio
+async def test_get_secret_not_found():
+    async with patch(
+        'app.repositories.secret_repository.db.async_session',
+        new_callable=AsyncMock
+    ) as mock_session:
+        mock_session_instance = mock_session.return_value.__aenter__.return_value
+        mock_execute_result = MagicMock()
+        mock_execute_result.scalars.return_value.first.return_value = None
+        mock_session_instance.execute.return_value = mock_execute_result
+
+        # Вызов тестируемого кода
+        secret_key = "non_existent_key"
+        result = await get_secret(secret_key)
+
+        # Проверка
+        mock_session_instance.execute.assert_called_once_with(
+            select(models.Secret).where(models.Secret.secret_key == secret_key)
+        )  # Проверяем, что запрос выполнен с правильными параметрами
+        # Проверяем, что результат — None
+        assert result is None
