@@ -1,13 +1,14 @@
+import uuid
+from datetime import datetime, timedelta, timezone, UTC
+from contextlib import asynccontextmanager
+
 import pytest
 import unittest
 from unittest.mock import patch, AsyncMock
-from app.schemas import SecretCreate
-from app.repositories.secret_repository import SecretFactory
 
 from app import models
-
-from datetime import datetime, timedelta, timezone
-import uuid
+from app.schemas import SecretCreate
+from app.repositories.secret_repository import SecretFactory, create_secret
 
 
 class TestSecretFactory(unittest.TestCase):
@@ -95,4 +96,93 @@ class TestSecretFactory(unittest.TestCase):
             # Подтверждаем корректность вызовов методов классов SecretManager, PasswordManager
             mock_password_manager.get_password_hash.assert_called_once_with('test_passphrase')
             mock_secret_manager.encrypt_secret.assert_called_once_with('test_secret')
+
+
+@asynccontextmanager
+@pytest.mark.asyncio
+async def test_cretate_secret_with_ttl():
+    with patch.object(SecretFactory, 'create', return_value=models.Secret(
+        id='mock_id',
+        secret_key='mock_key',
+        secret_data='mock_secret_data',
+        passphrase_hash='mock_passphrase_hash',
+        expires_at=datetime.now(UTC) + timedelta(seconds=3600)
+    )) as mock_create, \
+    patch(
+        'app.repositories.secret_repository.db.async_session',
+        new_callable=AsyncMock
+    ) as mock_session:
+
+        # Создаем экземпляр секрета
+        secret_create = SecretCreate(
+            passphrase='test_passphrase',
+            secret='test_secret',
+            ttl=3600
+        )
+
+        # Вызов тестируемого кода
+        mock_session_instance = (
+            mock_session.return_value.__aenter__.return_value
+        )
+        secret_key = await create_secret(secret_create)
+
+        # Проверка вызова фабрики SecretFactory.create
+        mock_create.assert_called_once_with(secret_create)
+
+        # Проверка, что объект был добавлен в сессию
+        mock_session_instance.add.assert_called_once()
+        added_secret = mock_session_instance.add.call_args[0][0]
+        assert added_secret.secret_key == 'mock_key'
+
+        # Проверка коммита
+        mock_session_instance.commit.assert_awaited_once()
+
+        # Проверка возвращённого значения
+        assert secret_key == 'mock_key'
+
+
+@asynccontextmanager
+@pytest.mark.asyncio
+async def test_cretate_secret_without_ttl():
+    with patch.object(SecretFactory, 'create', return_value=models.Secret(
+        id='mock_id',
+        secret_key='mock_key',
+        secret_data='mock_secret_data',
+        passphrase_hash='mock_passphrase_hash',
+        expires_at=datetime.now(UTC) + timedelta(seconds=3600)
+    )) as mock_create, \
+    patch(
+        'app.repositories.secret_repository.db.async_session',
+        new_callable=AsyncMock
+    ) as mock_session:
+
+        # Создаем экземпляр секрета
+        secret_create = SecretCreate(
+            passphrase='test_passphrase',
+            secret='test_secret',
+            ttl=None
+        )
+
+        # Вызов тестируемого кода
+        mock_session_instance = (
+            mock_session.return_value.__aenter__.return_value
+        )
+        secret_key = await create_secret(secret_create)
+
+        # Проверка вызова фабрики SecretFactory.create
+        mock_create.assert_called_once_with(secret_create)
+
+        # Проверка, что объект был добавлен в сессию
+        mock_session_instance.add.assert_called_once()
+        added_secret = mock_session_instance.add.call_args[0][0]
+        assert added_secret.secret_key == 'mock_key'
+
+        # Проверка отсутствия expires_at
+        assert added_secret.expires_at is None
+
+        # Проверка коммита
+        mock_session_instance.commit.assert_awaited_once()
+
+        # Проверка возвращённого значения
+        assert secret_key == 'mock_key'
 
